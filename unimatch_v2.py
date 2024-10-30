@@ -12,12 +12,15 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import yaml
 
-from dataset.semi import SemiDataset
+#from dataset.semi import SemiDataset
+from dataset.fakesuim import SemiDataset
+
 from model.semseg.dpt import DPT
-from supervised import evaluate
+#from supervised import evaluate
 from util.classes import CLASSES
 from util.ohem import ProbOhemCrossEntropy2d
-from util.utils import count_params, init_log, AverageMeter
+#from util.utils import count_params, init_log, AverageMeter
+from util.utilsuim import count_params, init_log, AverageMeter, evaluate
 from util.dist_helper import setup_distributed
 
 
@@ -240,6 +243,8 @@ def main():
         mIoU, iou_class = evaluate(model, valloader, eval_mode, cfg, multiplier=14)
         mIoU_ema, iou_class_ema = evaluate(model_ema, valloader, eval_mode, cfg, multiplier=14)
         
+
+
         if rank == 0:
             for (cls_idx, iou) in enumerate(iou_class):
                 logger.info('***** Evaluation ***** >>>> Class [{:} {:}] IoU: {:.2f}, '

@@ -7,6 +7,8 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 from torchvision.utils import save_image
 
+import torch.nn.functional as F
+
 
 def count_params(model):
     param_num = sum(p.numel() for p in model.parameters())
@@ -100,6 +102,7 @@ def init_log(name, level=logging.INFO):
 
 
 """ Funções novas exclusivas para o SUIM"""
+""" 
 def evaluate(model, valloader, eval_mode, cfg):
     model.eval()
     all_preds = []
@@ -123,6 +126,49 @@ def evaluate(model, valloader, eval_mode, cfg):
     
     mIoU, iou_class = calculate_metrics(all_preds, all_masks, cfg['nclass'])
     
+    return mIoU, iou_class"""
+
+# Usando o CLAUDE para tetntar fazer a função evaluate
+def evaluate(model, valloader, eval_mode, cfg, multiplier=None):
+    model.eval()
+    all_preds = []
+    all_masks = []
+    
+    for i, batch in enumerate(valloader):
+        image, target = batch[:2]  # Supondo que extras são ignorados por enquanto
+        
+        with torch.no_grad():
+            # Aplicar o multiplier se necessário
+            if multiplier is not None:
+                ori_h, ori_w = image.shape[-2:]
+                if multiplier == 512:
+                    new_h, new_w = 512, 512
+                else:
+                    new_h = int(ori_h / multiplier + 0.5) * multiplier
+                    new_w = int(ori_w / multiplier + 0.5) * multiplier
+                image = F.interpolate(image.cuda(), (new_h, new_w), 
+                                   mode='bilinear', align_corners=True)
+            else:
+                image = image.cuda()
+            
+            # Fazer a predição
+            output = model(image)
+            
+            # Redimensionar de volta se necessário
+            if multiplier is not None:
+                output = F.interpolate(output, (ori_h, ori_w), 
+                                    mode='bilinear', align_corners=True)
+            
+            pred = output.argmax(dim=1).cpu().numpy()
+            target = target.numpy()
+            
+            if pred.shape != target.shape:
+                pred = resize_or_crop(pred, target.shape)
+                
+            all_preds.append(pred)
+            all_masks.append(target)
+    
+    mIoU, iou_class = calculate_metrics(all_preds, all_masks, cfg['nclass'])
     return mIoU, iou_class
 
 def resize_or_crop(pred, target_shape):

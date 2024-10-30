@@ -29,6 +29,7 @@ CLASSES = {'pascal': ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bot
                     'textile-other', 'towel', 'tree', 'vegetable', 'wall-brick', 'wall-concrete', 'wall-other', 
                     'wall-panel', 'wall-stone', 'wall-tile', 'wall-wood', 'water-other', 'waterdrops',
                     'window-blind', 'window-other', 'wood'],
+           'suim': ['background', 'human', 'plant', 'wreck', 'robots', 'reef', 'fish', 'rocks'],
            
            'ade20k': ['wall', 'building', 'sky', 'floor', 'tree', 'ceiling', 'road', 'bed ',
                       'windowpane', 'grass', 'cabinet', 'sidewalk', 'person', 'earth',
