@@ -236,14 +236,14 @@ def ensure_valid_filename(filename, default_extension='.png'):
     return filename
 
 
-def save_predictions_as_images(predictions, output_dir, original_images=None, filenames=None):
-    """Salva as predições como imagens coloridas e, opcionalmente, as imagens originais.
+"""def save_predictions_as_images(predictions, output_dir, original_images=None, filenames=None):
+    Salva as predições como imagens coloridas e, opcionalmente, as imagens originais.
     
     :param predictions: Tensor de predições (B, C, H, W) ou lista de tensores
     :param output_dir: Diretório de saída para salvar as imagens
     :param original_images: Tensor de imagens originais (B, C, H, W) ou lista de tensores (opcional)
     :param filenames: Lista de nomes de arquivos correspondentes ou tensor (opcional)
-    """
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
@@ -307,4 +307,73 @@ def save_predictions_as_images(predictions, output_dir, original_images=None, fi
             original_img = Image.fromarray(original_img)
             original_output_path = os.path.join(output_dir, f"original_{output_filename}")
             original_img.save(original_output_path)
-           # print(f"Saved original image to: {original_output_path}")
+           # print(f"Saved original image to: {original_output_path}")"""
+def save_predictions_as_images(predictions, output_dir, original_images=None, filenames=None):
+    """Salva as predições como imagens coloridas e, opcionalmente, as imagens originais.
+    
+    :param predictions: Tensor de predições (B, C, H, W) ou lista de tensores
+    :param output_dir: Diretório de saída para salvar as imagens
+    :param original_images: Tensor de imagens originais (B, C, H, W) ou lista de tensores (opcional)
+    :param filenames: Lista de nomes de arquivos correspondentes ou tensor (opcional)
+    """
+    # Inicializa o contador na primeira chamada
+    if not hasattr(save_predictions_as_images, "counter"):
+        save_predictions_as_images.counter = 0
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Converter predictions para lista se for um tensor
+    if isinstance(predictions, torch.Tensor):
+        predictions = [pred for pred in predictions]
+    
+    # Preparar filenames
+    if filenames is None:
+        filenames = [f"image_{i}.png" for i in range(len(predictions))]
+    elif isinstance(filenames, torch.Tensor):
+        filenames = [f"image_{i}.png" for i in range(len(filenames))]
+    elif isinstance(filenames, str):
+        filenames = [filenames]
+    
+    # Garantir que todos os nomes de arquivo tenham extensões válidas
+    filenames = [ensure_valid_filename(f) for f in filenames]
+    
+    # Converter original_images para lista se for um tensor
+    if isinstance(original_images, torch.Tensor):
+        original_images = [img for img in original_images]
+    
+    if original_images:
+        print(f"Number of original images: {len(original_images)}")
+    
+    for i, (pred, filename) in enumerate(zip(predictions, filenames)):
+        # Converte as predições para rótulos de classe
+        _, label_mask = torch.max(pred, dim=0)
+        label_mask = label_mask.cpu().numpy()
+        
+        # Converte os rótulos para cores
+        rgb_mask = label_to_color(label_mask)
+        
+        # Incrementa o contador para o nome do arquivo
+        save_predictions_as_images.counter += 1
+        output_filename = f"{save_predictions_as_images.counter}_{os.path.basename(filename)}"
+        
+        # Salva a imagem da predição
+        img = Image.fromarray(rgb_mask)
+        pred_output_path = os.path.join(output_dir, f"pred_{output_filename}")
+        img.save(pred_output_path)
+        
+        # Salva a imagem original, se fornecida
+        if original_images:
+            original_img = original_images[i]
+            if isinstance(original_img, torch.Tensor):
+                # Normalize os valores para o intervalo [0, 1]
+                original_img = (original_img - original_img.min()) / (original_img.max() - original_img.min())
+                # Converta para uint8
+                original_img = (original_img * 255).byte().cpu().numpy().transpose(1, 2, 0)
+            elif isinstance(original_img, np.ndarray):
+                if original_img.dtype != np.uint8:
+                    original_img = (original_img * 255).astype(np.uint8)
+            
+            original_img = Image.fromarray(original_img)
+            original_output_path = os.path.join(output_dir, f"original_{output_filename}")
+            original_img.save(original_output_path)

@@ -3,6 +3,7 @@ from copy import deepcopy
 import logging
 import os
 import pprint
+import wandb
 
 import torch
 from torch import nn
@@ -21,7 +22,9 @@ from util.classes import CLASSES
 from util.ohem import ProbOhemCrossEntropy2d
 #from util.utils import count_params, init_log, AverageMeter
 from util.utilsuim import count_params, init_log, AverageMeter, evaluate
+from util.utilsuim import save_predictions_as_images
 from util.dist_helper import setup_distributed
+
 
 
 parser = argparse.ArgumentParser(description='UniMatch V2: Pushing the Limit of Semi-Supervised Semantic Segmentation')
@@ -238,7 +241,10 @@ def main():
                 logger.info('Iters: {:}, LR: {:.7f}, Total loss: {:.3f}, Loss x: {:.3f}, Loss s: {:.3f}, Mask ratio: '
                             '{:.3f}'.format(i, optimizer.param_groups[0]['lr'], total_loss.avg, total_loss_x.avg, 
                                             total_loss_s.avg, total_mask_ratio.avg))
+                wandb.log({"total_loss": total_loss.avg, "loss_x": total_loss_x.avg, "loss_s": total_loss_s.avg, "mask_ratio": total_mask_ratio.avg})  # Acompanha as métricas de loss
         
+
+            
         eval_mode = 'sliding_window' if cfg['dataset'] == 'cityscapes' else 'original'
         mIoU, iou_class = evaluate(model, valloader, eval_mode, cfg, multiplier=14)
         mIoU_ema, iou_class_ema = evaluate(model_ema, valloader, eval_mode, cfg, multiplier=14)
@@ -256,6 +262,10 @@ def main():
             for i, iou in enumerate(iou_class):
                 writer.add_scalar('eval/%s_IoU' % (CLASSES[cfg['dataset']][i]), iou, epoch)
                 writer.add_scalar('eval/%s_IoU_ema' % (CLASSES[cfg['dataset']][i]), iou_class_ema[i], epoch)
+                wandb.log({"iou_class_%s" % (CLASSES[cfg['dataset']][cls_idx]): iou})  # Acompanha o IoU de cada classe
+
+
+        wandb.log({"mIoU": mIoU})  # Acompanha o mIoU
 
         is_best = mIoU >= previous_best
         
@@ -267,6 +277,9 @@ def main():
             best_epoch_ema = epoch
         
         if rank == 0:
+            # Chamando função para salvar as predições
+            save_predictions_as_images(pred_u_w, 'exp/suim/preds/', original_images=img_u_w)
+
             checkpoint = {
                 'model': model.state_dict(),
                 'model_ema': model_ema.state_dict(),
@@ -283,4 +296,9 @@ def main():
 
 
 if __name__ == '__main__':
+    wandb.init(
+            project="UniMatchV2",
+            name="SUIM 60E CELOSS lr =0.000005, Training for the first time to check if it is working",
+            job_type="eval"
+        )
     main()

@@ -5,6 +5,7 @@
 # method: ['unimatch_v2', 'fixmatch', 'supervised']
 # exp: just for specifying the 'save_path'
 # split: ['92', '1_16', ...]. Please check directory './splits/$dataset' for concrete splits
+export WANDB_API_KEY="379a9e3e59d4b4cd151585beb228abeadc8404cb"
 dataset='suim'
 method='unimatch_v2'
 exp='dinov2_small'
